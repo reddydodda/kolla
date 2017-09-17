@@ -14,17 +14,29 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Kolla's Mission
-===============
+=================================
+Welcome to Kolla's documentation!
+=================================
 
-Kolla provides Docker containers and Ansible playbooks to meet Kolla's mission.
 Kolla's mission is to provide production-ready containers and deployment tools
 for operating OpenStack clouds.
 
-Kolla is highly opinionated out of the box, but allows for complete
-customization. This permits operators with minimal experience to deploy
-OpenStack quickly and as experience grows modify the OpenStack configuration to
-suit the operator's exact requirements.
+This documentation is for the Kolla container images. The following subprojects
+are available to help deploy Kolla:
+
+* `kolla-ansible <https://docs.openstack.org/kolla-ansible/latest/>`_
+* `kolla-kubernetes <https://docs.openstack.org/kolla-kubernetes/latest/>`_
+
+Site Notes
+==========
+
+This documentation is continually updated and may not represent the state of
+the project at any specific prior release. To access documentation for a
+previous release of kolla, append the OpenStack release name to the URL, for
+example:
+
+    https://docs.openstack.org/kolla/mitaka/
+
 
 Kolla Overview
 ==============
@@ -32,22 +44,23 @@ Kolla Overview
 .. toctree::
    :maxdepth: 1
 
-   deployment-philosophy
-   quickstart
-   heat-dev-env
-   vagrant-dev-env
    image-building
-   advanced-configuration
-   operating-kolla
 
-
-Kolla Services
+Developer Docs
 ==============
 
 .. toctree::
    :maxdepth: 1
 
-   cinder-guide
-   swift-guide
-   ceph-guide
-   ironic-guide
+   CONTRIBUTING
+   running-tests
+   bug-triage
+
+Template Override Docs
+======================
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   template-override/*

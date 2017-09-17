@@ -1,23 +1,33 @@
 FROM {{ namespace }}/{{ image_prefix }}base:{{ tag }}
-MAINTAINER {{ maintainer }}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
 
-{% if base_distro in ['centos', 'fedora', 'oraclelinux', 'rhel'] %}
+{% block mongodb_header %}{% endblock %}
 
-RUN yum -y install \
-        mongodb \
-        mongodb-server \
-    && yum clean all
+{% import "macros.j2" as macros with context %}
 
-{% elif base_distro in ['ubuntu', 'debian'] %}
+{{ macros.configure_user(name='mongodb') }}
 
-RUN apt-get install -y --no-install-recommends mongodb-server \
-    && apt-get clean
-
+{% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
+    {% set mongodb_packages = [
+            'mongodb',
+            'mongodb-server'
+    ] %}
+{% elif base_distro in ['debian', 'ubuntu'] %}
+    {% set mongodb_packages = [
+            'mongodb-server'
+    ] %}
 {% endif %}
 
-RUN mkdir -p /data/db
+{{ macros.install_packages(mongodb_packages | customizable("packages")) }}
 
-# TODO(SamYaple): updated mongodb to match the rest of Kolla
-#ENTRYPOINT exec /bin/mongod --dbpath /data/db --logpath /var/log/mongodb/mongo.log --noprealloc --smallfiles
+COPY mongodb_sudoers /etc/sudoers.d/kolla_mongodb_sudoers
+COPY extend_start.sh /usr/local/bin/kolla_extend_start
 
-{{ include_footer }}
+RUN chmod 755 /usr/local/bin/kolla_extend_start \
+    && chmod 750 /etc/sudoers.d \
+    && chmod 440 /etc/sudoers.d/kolla_mongodb_sudoers
+
+{% block mongodb_footer %}{% endblock %}
+{% block footer %}{% endblock %}
+
+USER mongodb

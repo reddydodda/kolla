@@ -1,29 +1,45 @@
-FROM {{ namespace }}/{{ base_distro }}-{{ install_type }}-base:{{ tag }}
-MAINTAINER {{ maintainer }}
+FROM {{ namespace }}/{{ image_prefix }}ironic-base:{{ tag }}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
 
-{% if base_distro in ['centos', 'fedora', 'oraclelinux', 'rhel'] %}
+{% block ironic_pxe_header %}{% endblock %}
 
-RUN yum -y install \
-        tftp-server \
-        syslinux-tftpboot \
-    && yum clean all \
-    && mkdir -p /tftpboot \
-    && cp /var/lib/tftpboot/chain.c32 /tftpboot
+{% import "macros.j2" as macros with context %}
 
-{% elif base_distro in ['ubuntu', 'debian'] %}
+{% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
+    {% set ironic_pxe_packages = [
+        'httpd',
+        'ipxe-bootimgs',
+        'mod_ssl',
+        'mod_wsgi',
+        'syslinux-tftpboot',
+        'tftp-server'
+    ] %}
+{{ macros.install_packages(ironic_pxe_packages | customizable("packages")) }}
+RUN sed -i -r 's,^(Listen 80),#\1,' /etc/httpd/conf/httpd.conf \
+    && sed -i -r 's,^(Listen 443),#\1,' /etc/httpd/conf.d/ssl.conf
+{% elif base_distro in ['debian', 'ubuntu'] %}
+    {% set ironic_pxe_packages = [
+        'apache2',
+        'ipxe',
+        'libapache2-mod-wsgi',
+        'pxelinux',
+        'syslinux-common',
+        'tftpd-hpa'
+    ] %}
 
-RUN apt-get install -y --no-install-recommends \
-        tftpd-hpa \
-        syslinux-common \
-        syslinux \
-    && apt-get clean \
-    && mkdir -p /tftpboot \
-    && cp /usr/lib/syslinux/pxelinux.0 /usr/lib/syslinux/chain.c32 /tftpboot
+    {% if base_arch == 'x86_64' %}
+        {% set ironic_pxe_packages = ironic_pxe_packages + [
+            'syslinux'
+        ] %}
+    {% endif %}
 
+{{ macros.install_packages(ironic_pxe_packages | customizable("packages")) }}
+RUN echo > /etc/apache2/ports.conf
 {% endif %}
 
-COPY tftp-map-file /tftpboot/map-file
+COPY tftp-map-file /map-file
+COPY extend_start.sh /usr/local/bin/kolla_ironic_extend_start
+RUN chmod 755 /usr/local/bin/kolla_ironic_extend_start
 
-{{ include_footer }}
-
-USER ironic
+{% block ironic_pxe_footer %}{% endblock %}
+{% block footer %}{% endblock %}

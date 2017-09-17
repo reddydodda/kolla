@@ -3,16 +3,28 @@
 # Bootstrap and exit if KOLLA_BOOTSTRAP variable is set. This catches all cases
 # of the KOLLA_BOOTSTRAP variable being set, including empty.
 if [[ "${!KOLLA_BOOTSTRAP[@]}" ]]; then
-    sudo -H -u neutron neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
+    neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
     exit 0
 fi
 
-# Neutron uses rootwrap which requires a tty for sudo.
-# Since the container is running in daemon mode, a tty
-# is not present and requiretty must be commented out.
-if [ ! -f /sudo-modified ]; then
-    chmod 0640 /etc/sudoers
-    sed -i '/Defaults    requiretty/s/^/#/' /etc/sudoers
-    chmod 0440 /etc/sudoers
-    touch /sudo-modified
+# Bootstrap and exit if KOLLA_BOOTSTRAP and NEUTRON_SFC_ENABLED variables are set.
+# This catches all cases of the KOLLA_BOOTSTRAP and NEUTRON_SFC_ENABLED variable
+# being set, including empty.
+if [[ "${!NEUTRON_SFC_BOOTSTRAP[@]}" ]]; then
+    neutron-db-manage --subproject networking-sfc --config-file /etc/neutron/neutron.conf upgrade head
+    exit 0
+fi
+
+# Migrate database and exit if KOLLA_UPGRADE variable is set. This catches all cases
+# of the KOLLA_UPGRADE variable being set, including empty.
+if [[ "${!KOLLA_UPGRADE[@]}" ]]; then
+    if [[ "${!NEUTRON_DB_EXPAND[@]}" ]]; then
+        echo "Expanding database"
+        neutron-db-manage upgrade --expand
+    fi
+    if [[ "${!NEUTRON_DB_CONTRACT[@]}" ]]; then
+        echo "Contracting database"
+        neutron-db-manage upgrade --contract
+    fi
+    exit 0
 fi

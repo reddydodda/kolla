@@ -1,30 +1,46 @@
 FROM {{ namespace }}/{{ image_prefix }}openstack-base:{{ tag }}
-MAINTAINER {{ maintainer }}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
+
+{% block ironic_base_header %}{% endblock %}
+
+{% import "macros.j2" as macros with context %}
+
+{{ macros.configure_user(name='ironic') }}
 
 {% if install_type == 'binary' %}
-    {% if base_distro in ['centos', 'fedora', 'oraclelinux', 'rhel'] %}
-
-# TODO(SamYaple): until packaging is fixed, all of this is required
-# http://pkgs.fedoraproject.org/cgit/openstack-ironic.git/tree/openstack-ironic.spec#n78
-RUN yum -y install \
-        openstack-ironic-common \
-        python-oslo-log \
-        python-oslo-concurrency \
-        python-oslo-policy \
-        python-oslo-versionedobjects \
-    && yum clean all
-
+    {% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
+        {% set ironic_base_packages = ['openstack-ironic-common'] %}
+    {% elif base_distro in ['debian', 'ubuntu'] %}
+        {% set ironic_base_packages = ['ironic-common'] %}
     {% endif %}
+
+{{ macros.install_packages(ironic_base_packages | customizable("packages")) }}
+
 {% elif install_type == 'source' %}
 
 ADD ironic-base-archive /ironic-base-source
+
+{% set ironic_base_pip_packages = [
+    '/ironic'
+] %}
+
 RUN ln -s ironic-base-source/* ironic \
-    && useradd --user-group ironic \
-    && /var/lib/kolla/venv/bin/pip --no-cache-dir install -c requirements/upper-constraints.txt /ironic \
-    && mkdir -p /etc/ironic /var/log/ironic /home/ironic \
+    && {{ macros.install_pip(ironic_base_pip_packages | customizable("pip_packages")) }} \
+    && mkdir -p /etc/ironic \
     && cp -r /ironic/etc/ironic/* /etc/ironic/ \
-    && chown -R ironic: /etc/ironic /var/log/ironic /home/ironic
+    && chown -R ironic: /etc/ironic \
+    && sed -i 's|^exec_dirs.*|exec_dirs=/var/lib/kolla/venv/bin,/sbin,/usr/sbin,/bin,/usr/bin,/usr/local/bin,/usr/local/sbin|g' /etc/ironic/rootwrap.conf
+
+ADD ironic_sudoers /etc/sudoers.d/kolla_ironic_sudoers
+RUN chmod 750 /etc/sudoers.d \
+    && chmod 440 /etc/sudoers.d/kolla_ironic_sudoers
 
 {% endif %}
 
-RUN usermod -a -G kolla ironic
+COPY extend_start.sh /usr/local/bin/kolla_extend_start
+
+RUN touch /usr/local/bin/kolla_ironic_extend_start \
+    && chmod 755 /usr/local/bin/kolla_extend_start /usr/local/bin/kolla_ironic_extend_start \
+    && chown -R ironic: /etc/ironic
+
+{% block ironic_base_footer %}{% endblock %}

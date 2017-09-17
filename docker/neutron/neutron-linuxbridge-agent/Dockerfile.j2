@@ -1,24 +1,39 @@
 FROM {{ namespace }}/{{ image_prefix }}neutron-base:{{ tag }}
-MAINTAINER {{ maintainer }}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
+
+{% block neutron_linuxbridge_agent_header %}{% endblock %}
+
+{% import "macros.j2" as macros with context %}
 
 {% if install_type == 'binary' %}
-    {% if base_distro in ['centos', 'fedora', 'oraclelinux', 'rhel'] %}
+    {% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
 
-# Install required packages
-RUN yum install -y \
-        ebtables \
-        openstack-neutron-linuxbridge \
-    && yum clean all
+        {% set neutron_linuxbridge_agent_packages = [
+            'ebtables',
+            'openstack-neutron-linuxbridge'
+        ] %}
+
+    {% elif base_distro in ['debian', 'ubuntu'] %}
+
+        {% set neutron_linuxbridge_agent_packages = [
+            'ebtables',
+            'neutron-plugin-linuxbridge-agent'
+        ] %}
 
     {% endif %}
+
 {% elif install_type == 'source' %}
-    {% if base_distro in ['centos', 'fedora', 'oraclelinux', 'rhel'] %}
 
-# Install required packages
-RUN yum install -y ebtables \
-    && yum clean all
+    {% set neutron_linuxbridge_agent_packages = [
+        'bridge-utils',
+        'ebtables'
+    ] %}
 
-    {% endif %}
 {% endif %}
 
-{{ include_footer }}
+{{ macros.install_packages(neutron_linuxbridge_agent_packages | customizable("packages")) }}
+
+{% block neutron_linuxbridge_agent_footer %}{% endblock %}
+{% block footer %}{% endblock %}
+
+USER neutron

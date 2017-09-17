@@ -1,24 +1,31 @@
 FROM {{ namespace }}/{{ image_prefix }}neutron-base:{{ tag }}
-MAINTAINER {{ maintainer }}
+LABEL maintainer="{{ maintainer }}" name="{{ image_name }}" build-date="{{ build_date }}"
+
+{% block neutron_openvswitch_agent_header %}{% endblock %}
+
+{% import "macros.j2" as macros with context %}
 
 {% if install_type == 'binary' %}
-    {% if base_distro in ['centos', 'fedora', 'oraclelinux', 'rhel'] %}
+    {% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
 
-# Install required packages
-RUN yum install -y \
-        openstack-neutron-openvswitch \
-        openvswitch \
-    && yum clean all
+        {% set neutron_openvswitch_agent_packages = [
+            'openstack-neutron-openvswitch',
+            'openvswitch'
+        ] %}
 
-    {% endif %}
-{% elif install_type == 'source' %}
-    {% if base_distro in ['centos', 'fedora', 'oraclelinux', 'rhel'] %}
+    {% elif base_distro in ['debian', 'ubuntu'] %}
 
-# Install required packages
-RUN yum install -y openvswitch \
-    && yum clean all
+        {% set neutron_openvswitch_agent_packages = [
+            'neutron-plugin-openvswitch-agent',
+            'openvswitch-switch'
+        ] %}
 
     {% endif %}
 {% endif %}
 
-{{ include_footer }}
+{{ macros.install_packages(neutron_openvswitch_agent_packages | customizable("packages")) }}
+
+{% block neutron_openvswitch_agent_footer %}{% endblock %}
+{% block footer %}{% endblock %}
+
+USER neutron

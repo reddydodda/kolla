@@ -4,6 +4,6 @@
 # of the KOLLA_BOOTSTRAP variable being set, including empty.
 if [[ "${!KOLLA_BOOTSTRAP[@]}" ]]; then
     glance-manage db_sync
-    sudo chown -R glance: /var/lib/glance/
+    glance-manage db_load_metadefs
     exit 0
 fi

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MAINTAINER='MAINTAINER {{ maintainer }}'
+MAINTAINER='LABEL maintainer="{{ maintainer }}"'
 RES=0
 
 for dockerfile in "$@"; do
@@ -11,4 +11,3 @@ for dockerfile in "$@"; do
 done
 
 exit $RES
-
